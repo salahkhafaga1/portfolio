@@ -1,340 +1,572 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Brain, 
+  Code2, 
+  Cpu, 
+  Briefcase, 
+  GraduationCap, 
+  Award, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Github, 
+  Linkedin, 
+  ExternalLink,
+  ChevronUp,
+  Terminal,
+  MessageSquare,
+  X,
+  Send,
+  Sparkles,
+  Bot,
+  User,
+  Download
+} from 'lucide-react';
 
-     <title>My Resume </title>
+// --- Portfolio Data (From CV) ---
+const portfolioData = {
+  name: "Salah Khafaga",
+  title: "AI Engineer & Front-End Developer",
+  summary: "Dedicated Machine Learning Engineer and Front-end Developer with a strong foundation in Communications and Electronics Engineering. Proven ability to architect AI-driven smart agriculture platforms, optimizing crop management and resource allocation using real-time IoT data, and deploy solutions via intuitive web interfaces. Experienced in bridging the gap between advanced AI models and user-centric applications.",
+  cv_link: "https://drive.google.com/file/d/1ZEruPrUrfJ85t24S3Y3g0gOH6CihoR-j/view?usp=drive_link",
+  contact: {
+    email: "salahkhafaga1234@gmail.com",
+    phone: "+20 121 264 3337",
+    location: "Beheira, Egypt",
+    linkedin: "https://www.linkedin.com/in/salah-khafaga",
+    github: "https://github.com/salahkhafaga1"
+  },
+  skills: [
+    { category: "Programming", items: ["Python", "JavaScript", "C++"], icon: <Terminal size={20} /> },
+    { category: "Data Science & ML", items: ["Scikit-learn", "Pandas", "NumPy", "MLflow", "TensorBoard", "EDA", "Model Optimization"], icon: <Brain size={20} /> },
+    { category: "Web Development", items: ["Front-End Development", "React.js", "Tailwind CSS"], icon: <Code2 size={20} /> },
+    { category: "Hardware / IoT", items: ["Arduino", "ESP32", "IoT Systems"], icon: <Cpu size={20} /> },
+  ],
+  experience: [
+    {
+      title: "AI Engineer Intern",
+      company: "Codeva Technology (Remote - India)",
+      date: "Feb 2026 - Mar 2026",
+      description: "Spearheaded the development and fine-tuning of machine learning models, resulting in a 15% improvement in prediction accuracy. Engineered data preprocessing pipelines using Python, Pandas, and NumPy, reducing data cleaning time by 20%."
+    },
+    {
+      title: "Lead AI & IoT Developer",
+      company: "Raqeeb (Remote)",
+      date: "Jan 2026 - Present",
+      description: "Led technical innovation and implementation of the Raqeeb system, securing 3rd place at the Damanhour Hackathon."
+    },
+    {
+      title: "AI & Front-End Developer",
+      company: "Freelance",
+      date: "Oct 2025 - Present",
+      description: "Developed predictive ML pipelines using Python, Scikit-learn, and Pandas for EDA, enhancing model accuracy by an average of 10% through rigorous optimization."
+    }
+  ],
+  projects: [
+    {
+      title: "Reef Plus: Smart Agriculture System",
+      date: "Aug 2025 - Dec 2025",
+      description: "Architected an AI-driven smart agriculture platform using IoT sensor data for crop optimization and resource allocation, achieving an estimated 15% increase in crop yield and reducing water/fertilizer consumption by 25%.",
+      tags: ["AI", "IoT", "Smart Agriculture"],
+      link: "#"
+    },
+    {
+      title: "Real-Time Vehicle Anomaly Detection",
+      date: "Mar 2026 - Present",
+      description: "Developed an AI system for real-time monitoring of connected vehicle sensor streams, achieving 95% anomaly detection accuracy and predicting mechanical failures up to 48 hours in advance, resulting in a 20% improvement in operational reliability.",
+      tags: ["Machine Learning", "Real-time Data", "Predictive Maintenance"],
+      link: "#"
+    },
+    {
+      title: "Raqeeb: Smart Storage Monitor",
+      date: "Nov 2025",
+      description: "Developed an intelligent IoT and AI monitoring system for storage facilities, integrating hardware sensors with AI algorithms for real-time environmental analysis. Awarded 3rd Place at the Damanhour Hackathon (2025).",
+      tags: ["IoT", "AI", "Hardware Integration"],
+      link: "#"
+    }
+  ],
+  education: {
+    degree: "B.E. in Communications and Electronics Engineering",
+    university: "Damanhour University",
+    date: "Sep 2023 - Present",
+    gpa: "3.6",
+    details: "Active AI Trainee and Member of the IEEE SSCS AUSC Student Chapter. Formally recognized by the Faculty Dean and the University Innovation Unit (Dec 2025) for exceptional technical innovation."
+  },
+  certifications: [
+    { title: "Applied AI Track Certification", issuer: "ITI", date: "Aug 2025" },
+    { title: "AI Fundamentals Certification", issuer: "NVIDIA", date: "Nov 2025" },
+    { title: "Web Development Certification", issuer: "DEPI", date: "May 2025" },
+  ]
+};
 
-     <meta charset="UTF-8">
-     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
-     <meta name="description" content="">
-     <meta name="keywords" content="">
-     <meta name="author" content="Tooplate">
-     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+// --- Gemini API Configuration ---
+const apiKey = ""; // The environment provides the key at runtime
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-     <link rel="stylesheet" href="css/bootstrap.min.css">
-     <link rel="stylesheet" href="css/all.min.css">
-     <link rel="stylesheet" href="css/owl.carousel.min.css">
-     <link rel="stylesheet" href="css/owl.theme.default.min.css">
+const systemInstruction = {
+  parts: [{
+    text: `You are an AI assistant representing Salah Khafaga, an AI Engineer and Front-End Developer.
+    Your goal is to answer questions from recruiters and visitors about Salah's skills, experience, and projects.
+    Be highly professional, enthusiastic, and concise. 
+    Use the following JSON data representing Salah's resume to answer questions accurately: 
+    ${JSON.stringify(portfolioData)}
+    If a user asks a question not covered by the resume data, politely state that you are an AI assistant and recommend they contact Salah directly via email at ${portfolioData.contact.email}.
+    Always maintain the persona of an AI helper created by Salah to showcase his AI integration skills.`
+  }]
+};
 
-     <!-- MAIN CSS -->
-     <link rel="stylesheet" href="css/tooplate-ben-resume-style.css">
+// Exponential Backoff Fetch
+const fetchWithRetry = async (url, options, retries = 5) => {
+  const delays = [1000, 2000, 4000, 8000, 16000];
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await new Promise(res => setTimeout(res, delays[i]));
+    }
+  }
+};
 
-</head>
+// --- AI Chat Assistant Component ---
+const AIChatAssistant = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { role: 'model', text: "Hello! I'm Salah's AI Assistant ✨. I know all about his experience in AI, IoT, and Web Development. What would you like to know?" }
+  ]);
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
-<body data-spy="scroll" data-target="#navbarNav" data-offset="50">
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    <!-- MENU BAR -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
+  useEffect(() => {
+    if (isOpen) scrollToBottom();
+  }, [messages, isOpen]);
 
-            <a class="navbar-brand" href="#">
-                Salah Khafaga
-            </a>
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!inputValue.trim() || isLoading) return;
 
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+    const userMessage = inputValue.trim();
+    setInputValue("");
+    const newMessages = [...messages, { role: 'user', text: userMessage }];
+    setMessages(newMessages);
+    setIsLoading(true);
 
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item">
-                        <a href="#intro" class="nav-link smoothScroll">Introduction</a>
-                    </li>
+    try {
+      // Format chat history for Gemini
+      const contents = newMessages.map(msg => ({
+        role: msg.role === 'model' ? 'model' : 'user',
+        parts: [{ text: msg.text }]
+      }));
 
-                    <li class="nav-item">
-                        <a href="#about" class="nav-link smoothScroll">About Me</a>
-                    </li>
+      const payload = {
+        contents: contents,
+        systemInstruction: systemInstruction
+      };
 
-                    <li class="nav-item">
-                        <a href="#testimonials" class="nav-link smoothScroll">Projects</a>
-                    </li>
+      const result = await fetchWithRetry(GEMINI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
 
-                    <li class="nav-item">
-                        <a href="#contact" class="nav-link smoothScroll">Contact</a>
-                    </li>
-                </ul>
+      const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (aiText) {
+        setMessages(prev => [...prev, { role: 'model', text: aiText }]);
+      } else {
+        throw new Error("Invalid response format");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessages(prev => [...prev, { role: 'model', text: "I'm sorry, I'm experiencing some network interference right now. Please try asking again in a moment, or contact Salah directly!" }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-                <div class="mt-lg-0 mt-3 mb-4 mb-lg-0">
-                    <a href="https://drive.google.com/drive/folders/1gaqEgVzXuL_CYV57m7LxLbHIU4sIiRQn" class="custom-btn btn" download>Download CV</a>
-                </div>
+  return (
+    <>
+      {/* Floating Button */}
+      <button 
+        onClick={() => setIsOpen(true)}
+        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:-translate-y-1 transition-all duration-300 ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+        aria-label="Open AI Assistant"
+      >
+        <Sparkles className="absolute -top-1 -right-1 text-yellow-300 animate-pulse" size={16} />
+        <MessageSquare size={28} />
+      </button>
+
+      {/* Chat Window */}
+      <div 
+        className={`fixed bottom-6 right-6 z-50 w-[350px] sm:w-[400px] h-[500px] max-h-[80vh] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col transition-all duration-300 origin-bottom-right ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/90 rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Bot size={20} />
             </div>
-
-        </div>
-    </nav>
-
-
-    <!-- HERO -->
-    <section class="hero d-flex flex-column justify-content-center align-items-center" id="intro">
-
-         <div class="container">
-            <div class="row">
-
-                  <div class="mx-auto col-lg-5 col-md-5 col-10">
-                      <img src="images/ben.png" class="img-fluid" alt="Ben Resume HTML Template">
-                  </div>
-
-                   <div class="d-flex flex-column justify-content-center align-items-center col-lg-7 col-md-7 col-12">
-                        <div class="hero-text">
-
-                            <h1 class="hero-title">👋 Salah, a React front-end developer</h1>
-
-                            <a href="https://www.linkedin.com/in/salah-khafaga
-                            " class="email-link">
-                                My account
-                            </a>
-                          
-                        </div>
-                    </div>
-
+            <div>
+              <h3 className="text-white font-bold text-sm">Salah's AI Clone ✨</h3>
+              <p className="text-cyan-400 text-xs flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Online
+              </p>
             </div>
-        </div>
-    </section>
-
-
-    <section class="about section-padding" id="about">
-        <div class="container">
-            <div class="row">
-
-                <div class="col-lg-6 col-md-6 col-12">
-                    <h3 class="mb-4">This is my Resume</h3>
-
-                    <p>I'm Salah Khafaga, a passionate Front-End Developer specializing in React.js. As a beginner in the field, I am constantly learning and exploring new technologies to build interactive and responsive web applications.
-
-                      <hr>🎯 My goal is to enhance my skills in JavaScript, HTML, CSS, and React by working on real-world projects and collaborating with experienced developers. I am eager to grow, take on new challenges, and contribute to meaningful projects.
-                      
-                      <hr>🚀 I’m always open to opportunities where I can apply my knowledge and improve as a developer. Let’s connect and build something amazing together</p>
-
-                  
-
-                    <ul class="mt-4 mb-5 mb-lg-0 profile-list list-unstyled">
-                        <li><strong>Full Name :</strong> Salah Mahmoud Said Khafaga</li>
-
-                        <li><strong>Date of Birth:</strong> 3 december 2004</li>
-
-                        <li><strong>Email :</strong> salahkhafaga1234@gmail.com</li>
-                    </ul>
-                </div>
-
-                <div class="col-lg-5 mx-auto col-md-6 col-12">
-                    <img src="images/true-agency.jpg" class="about-image img-fluid" alt="Ben's Resume HTML Template">
-                </div>
-
-            </div>
-            <div class="row about-third">
-            	<div class="col-lg-4 col-md-4 col-12">
-                <h3>Frontend Expertise</h3>
-                <p>Specialized in building modern web applications using React.js and its ecosystem. Proficient in creating responsive, user-friendly interfaces with React hooks, Redux for state management, and modern JavaScript (ES6+).</p>
-                </div>
-                <div class="col-lg-4 col-md-4 col-12">
-                <h3>UI/UX Focus</h3>
-                <p>Passionate about creating seamless user experiences through clean, efficient code. Experienced in working with CSS frameworks like Material-UI, Styled Components, and implementing responsive designs.</p>
-                </div>
-                <div class="col-lg-4 col-md-4 col-12">
-                <h3>Development Tools</h3>
-                <p>Well-versed in modern development workflows using Git, npm, and webpack. Experienced in RESTful API integration, component testing with Jest and React Testing Library, and performance optimization.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-
-    <!-- PROJECTS -->
-     <section class="testimonials section-padding" id="testimonials">
-          <div class="container">
-               <div class="row">
-                    <div class="col-12">
-                        <h3 class="mb-5 text-center">My Projects</h3>
-
-                        <div class="owl-carousel owl-theme" id="testimonials-carousel">
-                            <div class="item">
-                                <div class="testimonials-thumb d-flex">
-                                    <div class="testimonials-image">
-                                        <img src="https://www.ca-egypt.com/app/uploads/2024/10/banki-commerce-1.jpg" class="img-fluid" alt="E-commerce project">
-                                    </div>
-
-                                    <div class="testimonials-info">
-                                        <h4 class="mb-0">E-Commerce Platform</h4>
-                                        <p>A full-featured online store built with React and Redux. Features include product catalog, shopping cart, and secure checkout.</p>
-                                        
-                                        <a href="#" class="custom-btn btn mt-3">View Project</a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="item">
-                                <div class="testimonials-thumb d-flex">
-                                    <div class="testimonials-image">
-                                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR4S84tRk2Psm27hz01-eQcUFlCEwzx6v0QlQ&s" class="img-fluid" alt="Dashboard project">
-                                    </div>
-
-                                    <div class="testimonials-info">
-                                        <h4 class="mb-0">Analytics Dashboard</h4>
-                                        <p>Interactive dashboard with real-time data visualization, custom charts, and responsive design.</p>
-                                       
-                                       
-                                        <a href="#" class="custom-btn btn mt-3">View Project</a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="item">
-                                <div class="testimonials-thumb d-flex">
-                                    <div class="testimonials-image">
-                                        <img src="https://www.projectmanager.com/wp-content/uploads/2023/09/tab-task-lists.jpg" class="img-fluid" alt="Task management project">
-                                    </div>
-
-                                    <div class="testimonials-info">
-                                        <h4 class="mb-0">Task Management App</h4>
-                                        <p>Collaborative task management tool with drag-and-drop functionality and real-time updates.</p>
-                                      
-                                        <a href="#" class="custom-btn btn mt-3">View Project</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-               </div>
           </div>
-     </section>
-
-
-     <!-- FAQ -->
-     <section class="faq section-padding">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-12 col-12">
-                    <h3 class="mb-5">Frequently Asked Questions</h3>
-
-                    <div class="accordion" id="accordionExample">
-                        <div class="card">
-                            <div class="card-header" id="headingOne">
-                                <h2 class="mb-0">
-                                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#collapseOne">
-                                        What services do you offer?
-                                    </button>
-                                </h2>
-                            </div>
-                            <div id="collapseOne" class="collapse show" data-parent="#accordionExample">
-                                <div class="card-body">
-                                    I offer a comprehensive range of professional services including project management, development, and consulting. Each solution is tailored to meet specific client needs and business objectives.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header" id="headingTwo">
-                                <h2 class="mb-0">
-                                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseTwo">
-                                        How can we collaborate on projects?
-                                    </button>
-                                </h2>
-                            </div>
-                            <div id="collapseTwo" class="collapse" data-parent="#accordionExample">
-                                <div class="card-body">
-                                    I'm open to various collaboration models including full-time positions, contract work, and project-based partnerships. We can discuss your specific needs and find the best way to work together.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header" id="headingThree">
-                                <h2 class="mb-0">
-                                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseThree">
-                                        What is your work process?
-                                    </button>
-                                </h2>
-                            </div>
-                            <div id="collapseThree" class="collapse" data-parent="#accordionExample">
-                                <div class="card-body">
-                                    My work process involves thorough planning, regular communication, and iterative development. I believe in maintaining transparency throughout the project lifecycle and ensuring client satisfaction at every step.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header" id="headingFour">
-                                <h2 class="mb-0">
-                                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseFour">
-                                        What is your availability for new projects?
-                                    </button>
-                                </h2>
-                            </div>
-                            <div id="collapseFour" class="collapse" data-parent="#accordionExample">
-                                <div class="card-body">
-                                    Please contact me through the form below to discuss my current availability. I carefully evaluate each opportunity to ensure I can deliver the highest quality of work.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          <button 
+            onClick={() => setIsOpen(false)}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
-     </section>
 
-
-     <section class="contact section-padding pt-0" id="contact">
-      <div class="container">
-        <div class="row">
-
-          <div class="col-lg-6 col-md-6 col-12">
-            <form action="#" method="get" class="contact-form webform"  role="form">
-                
-                <div class="form-group d-flex flex-column-reverse">
-                    <input type="text" class="form-control" name="cf-name" id="cf-name" placeholder="Your Name">
-
-                    <label for="cf-name" class="webform-label">Full Name</label>
-                </div>
-
-                <div class="form-group d-flex flex-column-reverse">
-                    <input type="email" class="form-control" name="cf-email" id="cf-email" placeholder="Your Email">
-
-                    <label for="cf-email" class="webform-label">Your Email</label>
-                </div>
-
-                <div class="form-group d-flex flex-column-reverse">
-                    <textarea class="form-control" rows="5" name="cf-message" id="cf-message" placeholder="Your Message"></textarea>
-
-                    <label for="cf-message" class="webform-label">Message</label>
-                </div>
-
-                <button type="submit" class="form-control" id="submit-button" name="submit">Send</button>
-            </form>
-          </div>
-
-            <div class="mx-auto col-lg-4 col-md-6 col-12">
-                <h3 class="my-4 pt-4 pt-lg-0">Say hello</h3>
-
-                <p class="mb-1">012-1264-3337</p>
-
-                <p>
-                    <a href="#">
-                        salahkhafaga1234@gmail.com
-                    <i class="fas fa-arrow-right custom-icon"></i>
-                    </a>
-                </p>
-
-                <ul class="social-links mt-2">
-                    <li><a href="https://fb.com/tooplate" rel="noopener" class="fab fa-facebook"></a></li>
-                    <li><a href="#" rel="noopener" class="fab fa-twitter"></a></li>
-                    <li><a href="#" rel="noopener" class="fab fa-instagram"></a></li>
-                    <li><a href="#" rel="noopener" class="fab fa-linkedin"></a></li>
-                    <li><a href="#" rel="noopener" class="fab fa-youtube"></a></li>
-                </ul>
-                
-              <p class="copyright-text mt-5 pt-3">Copyright &copy; 2025 salahkhafaga</p>
-                
-                
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+          {messages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed ${
+                msg.role === 'user' 
+                  ? 'bg-cyan-600 text-white rounded-br-none' 
+                  : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-none'
+              }`}>
+                {msg.text}
+              </div>
             </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-slate-800 border border-slate-700 p-4 rounded-2xl rounded-bl-none flex gap-2 items-center">
+                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
+        {/* Input Form */}
+        <form onSubmit={handleSend} className="p-3 border-t border-slate-800 bg-slate-900 rounded-b-2xl flex gap-2">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Ask about my skills or projects..."
+            disabled={isLoading}
+            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 disabled:opacity-50 transition-colors"
+          />
+          <button 
+            type="submit"
+            disabled={!inputValue.trim() || isLoading}
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-50 disabled:hover:bg-cyan-600 transition-colors"
+          >
+            <Send size={18} className={`${inputValue.trim() && !isLoading ? '-ml-1' : ''} transition-all`} />
+          </button>
+        </form>
+      </div>
+    </>
+  );
+};
+
+
+// --- Main Components ---
+
+const Navbar = () => (
+  <nav className="fixed w-full z-50 top-0 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+    <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+        S.Khafaga
+      </div>
+      <div className="hidden md:flex gap-6 text-slate-300 font-medium">
+        <a href="#about" className="hover:text-cyan-400 transition-colors">About</a>
+        <a href="#skills" className="hover:text-cyan-400 transition-colors">Skills</a>
+        <a href="#experience" className="hover:text-cyan-400 transition-colors">Experience</a>
+        <a href="#projects" className="hover:text-cyan-400 transition-colors">Projects</a>
+      </div>
+      <a href="#contact" className="px-5 py-2 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-white transition-all duration-300">
+        Contact Me
+      </a>
+    </div>
+  </nav>
+);
+
+const Hero = () => (
+  <header id="about" className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden flex items-center min-h-[90vh]">
+    <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none" />
+    <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
+    
+    <div className="max-w-6xl mx-auto px-4 relative z-10 flex flex-col md:flex-row items-center gap-12">
+      <div className="flex-1">
+        <div className="inline-block px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-semibold mb-6 animate-pulse">
+          Available for new opportunities 🚀
+        </div>
+        <h1 className="text-5xl md:text-7xl font-bold text-white mb-4 leading-tight">
+          Hello, I'm <br />
+          <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+            {portfolioData.name}
+          </span>
+        </h1>
+        <h2 className="text-2xl md:text-3xl text-slate-300 mb-6 font-light">
+          {portfolioData.title}
+        </h2>
+        <p className="text-lg text-slate-400 max-w-2xl leading-relaxed mb-8">
+          {portfolioData.summary}
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a href="#projects" className="px-8 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold hover:shadow-lg hover:shadow-cyan-500/30 transition-all duration-300">
+            View Projects
+          </a>
+          <a href={portfolioData.cv_link} target="_blank" rel="noopener noreferrer" className="px-8 py-3 rounded-lg bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/30 hover:bg-cyan-500/20 transition-all duration-300 flex items-center gap-2">
+            <Download size={20} />
+            View CV
+          </a>
+          <a href="#contact" className="px-8 py-3 rounded-lg bg-slate-800 text-white font-bold border border-slate-700 hover:bg-slate-700 transition-all duration-300 flex items-center gap-2">
+            <Github size={20} />
+            GitHub Profile
+          </a>
         </div>
       </div>
-    </section>
-     <!-- SCRIPTS -->
-     <script src="js/jquery.min.js"></script>
-     <script src="js/bootstrap.min.js"></script>
-     <script src="js/smoothscroll.js"></script>
-     <script src="js/owl.carousel.min.js"></script>
-     <script src="js/custom.js"></script>
+      
+      <div className="hidden md:block flex-1 relative">
+        <div className="w-full aspect-square rounded-3xl bg-gradient-to-tr from-slate-800 to-slate-900 border border-slate-700 p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 group-hover:opacity-20 transition-opacity"></div>
+          <div className="relative z-10 flex justify-between items-start text-cyan-400">
+            <Code2 size={48} className="opacity-50" />
+            <Brain size={48} className="animate-bounce" />
+          </div>
+          <div className="relative z-10">
+            <div className="text-5xl font-black text-white opacity-20 mb-2">AI & IoT</div>
+            <div className="text-xl text-slate-300">Engineering the Future</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+);
 
-</body>
-</html>
+const SectionHeading = ({ title, icon: Icon }) => (
+  <div className="flex items-center gap-3 mb-10">
+    <div className="p-3 bg-cyan-500/10 rounded-xl text-cyan-400 border border-cyan-500/20">
+      <Icon size={28} />
+    </div>
+    <h2 className="text-3xl font-bold text-white">{title}</h2>
+  </div>
+);
+
+const Skills = () => (
+  <section id="skills" className="py-20 bg-slate-900/50 border-y border-slate-800">
+    <div className="max-w-6xl mx-auto px-4">
+      <SectionHeading title="Technical Skills" icon={Cpu} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {portfolioData.skills.map((skillGroup, idx) => (
+          <div key={idx} className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-colors duration-300">
+            <div className="flex items-center gap-3 mb-4 text-cyan-400">
+              {skillGroup.icon}
+              <h3 className="text-xl font-semibold text-white">{skillGroup.category}</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {skillGroup.items.map((item, i) => (
+                <span key={i} className="px-3 py-1 bg-slate-950 rounded-md text-sm text-slate-300 border border-slate-800">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+const ExperienceAndEducation = () => (
+  <section id="experience" className="py-20 relative">
+    <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-12">
+      
+      <div>
+        <SectionHeading title="Work Experience" icon={Briefcase} />
+        <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-cyan-500 before:to-slate-800">
+          {portfolioData.experience.map((exp, idx) => (
+            <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-900 bg-cyan-500 text-white shadow shrink-0 absolute left-0 md:left-1/2 md:-ml-5 z-10">
+                <Briefcase size={16} />
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-slate-800/50 p-6 rounded-2xl border border-slate-700 hover:border-cyan-500/50 transition-all ml-auto md:ml-0 md:mr-auto group-odd:md:mr-0 group-odd:md:ml-auto">
+                <div className="flex flex-col gap-1 mb-2">
+                  <h4 className="font-bold text-white text-lg">{exp.title}</h4>
+                  <span className="text-cyan-400 text-sm font-medium">{exp.company}</span>
+                  <span className="text-slate-500 text-xs">{exp.date}</span>
+                </div>
+                <p className="text-slate-400 text-sm leading-relaxed">{exp.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <SectionHeading title="Education & Certifications" icon={GraduationCap} />
+        
+        <div className="bg-gradient-to-br from-slate-800/80 to-slate-900 p-6 rounded-2xl border border-slate-700 mb-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-[50px]"></div>
+          <h4 className="text-xl font-bold text-white mb-1">{portfolioData.education.degree}</h4>
+          <div className="text-cyan-400 font-medium mb-2">{portfolioData.education.university} <span className="text-slate-500 text-sm">(GPA: {portfolioData.education.gpa})</span></div>
+          <div className="text-slate-500 text-sm mb-4">{portfolioData.education.date}</div>
+          <p className="text-slate-400 text-sm leading-relaxed border-t border-slate-700 pt-4">
+            {portfolioData.education.details}
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+            <Award size={20} className="text-cyan-400" /> Key Certifications
+          </h3>
+          {portfolioData.certifications.map((cert, idx) => (
+            <div key={idx} className="flex flex-col p-4 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:bg-slate-800/80 transition-colors">
+              <span className="font-semibold text-slate-200">{cert.title}</span>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-cyan-400 text-sm">{cert.issuer}</span>
+                <span className="text-slate-500 text-xs">{cert.date}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  </section>
+);
+
+const Projects = () => (
+  <section id="projects" className="py-20 bg-slate-900/30 border-y border-slate-800">
+    <div className="max-w-6xl mx-auto px-4">
+      <SectionHeading title="Featured Projects" icon={Code2} />
+      <div className="grid md:grid-cols-3 gap-6">
+        {portfolioData.projects.map((project, idx) => (
+          <div key={idx} className="group bg-slate-800/80 rounded-2xl border border-slate-700 overflow-hidden hover:-translate-y-2 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10 flex flex-col h-full">
+            <div className="h-48 bg-slate-900 border-b border-slate-700 flex items-center justify-center p-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 z-0"></div>
+              {idx === 0 && <Brain size={64} className="text-cyan-500/50 group-hover:scale-110 transition-transform z-10" />}
+              {idx === 1 && <Cpu size={64} className="text-blue-500/50 group-hover:scale-110 transition-transform z-10" />}
+              {idx === 2 && <Terminal size={64} className="text-teal-500/50 group-hover:scale-110 transition-transform z-10" />}
+            </div>
+            <div className="p-6 flex-1 flex flex-col">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-white line-clamp-2 pr-4">{project.title}</h3>
+                <a href={project.link} className="text-slate-400 hover:text-cyan-400 transition-colors p-1">
+                  <ExternalLink size={20} />
+                </a>
+              </div>
+              <p className="text-slate-400 text-sm mb-6 flex-1 line-clamp-4 leading-relaxed">
+                {project.description}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-auto">
+                {project.tags.map((tag, i) => (
+                  <span key={i} className="text-xs px-2 py-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
+const Footer = () => (
+  <footer id="contact" className="bg-slate-950 py-12 border-t border-slate-800">
+    <div className="max-w-6xl mx-auto px-4">
+      <div className="grid md:grid-cols-2 gap-10 items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-4">Let's build something great!</h2>
+          <p className="text-slate-400 mb-8 max-w-md leading-relaxed">
+            Always open to discussing new projects, creative ideas, or opportunities to be part of your vision in AI, IoT, and Web Development.
+          </p>
+          <div className="flex gap-4">
+            <a href={portfolioData.contact.linkedin} className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 hover:bg-slate-800 transition-all">
+              <Linkedin size={20} />
+            </a>
+            <a href={portfolioData.contact.github} className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 hover:bg-slate-800 transition-all">
+              <Github size={20} />
+            </a>
+            <a href={`mailto:${portfolioData.contact.email}`} className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 hover:bg-slate-800 transition-all">
+              <Mail size={20} />
+            </a>
+          </div>
+        </div>
+        
+        <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0">
+                <Mail size={20} />
+              </div>
+              <div className="overflow-hidden">
+                <div className="text-sm text-slate-500 mb-1">Email</div>
+                <div className="text-white font-medium truncate">{portfolioData.contact.email}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0">
+                <Phone size={20} />
+              </div>
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Phone</div>
+                <div className="text-white font-medium">{portfolioData.contact.phone}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0">
+                <MapPin size={20} />
+              </div>
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Location</div>
+                <div className="text-white font-medium">{portfolioData.contact.location}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-12 pt-8 border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-4">
+        <p className="text-slate-500 text-sm">
+          © {new Date().getFullYear()} Salah Khafaga. All rights reserved.
+        </p>
+        <button 
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="flex items-center gap-2 text-sm text-slate-400 hover:text-cyan-400 transition-colors"
+        >
+          Back to top <ChevronUp size={16} />
+        </button>
+      </div>
+    </div>
+  </footer>
+);
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative">
+      <Navbar />
+      <main>
+        <Hero />
+        <Skills />
+        <ExperienceAndEducation />
+        <Projects />
+      </main>
+      <Footer />
+      {/* AI Assistant Integration */}
+      <AIChatAssistant />
+    </div>
+  );
+}
